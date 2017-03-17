@@ -93,7 +93,7 @@ module SSHKit
       def test_upload_and_then_capture_file_contents
         actual_file_contents = ""
         file_name = File.join("/tmp", SecureRandom.uuid)
-        File.open file_name, 'w+' do |f|
+        File.open file_name, 'wb+' do |f|
           f.write "Some Content\nWith a newline and trailing spaces    \n "
         end
         Netssh.new(a_host) do
@@ -117,7 +117,7 @@ module SSHKit
         size      = 25
         fills     = SecureRandom.random_bytes(1024*1024)
         file_name = "/tmp/file-#{size}.txt"
-        File.open(file_name, 'w') do |f|
+        File.open(file_name, 'wb') do |f|
           (size).times {f.write(fills) }
         end
         file_contents = ""
@@ -125,7 +125,8 @@ module SSHKit
           upload!(file_name, file_name)
           file_contents = download!(file_name)
         end.run
-        assert_equal File.open(file_name).read, file_contents
+        file_contents.force_encoding(Encoding::ASCII_8BIT)
+        assert_equal File.open(file_name, 'rb').read, file_contents
       end
 
       def test_interaction_handler

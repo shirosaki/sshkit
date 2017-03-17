@@ -1,3 +1,4 @@
+# encoding: ASCII-8BIT
 require 'helper'
 module SSHKit
 
@@ -12,7 +13,7 @@ module SSHKit
 
       def test_upload
         Dir.mktmpdir do |dir|
-          File.new("#{dir}/local", 'w')
+          File.new("#{dir}/local", 'w').close
           Local.new do
             upload!("#{dir}/local", "#{dir}/remote")
           end.run
@@ -23,8 +24,8 @@ module SSHKit
       def test_upload_recursive
         Dir.mktmpdir do |dir|
           Dir.mkdir("#{dir}/local")
-          File.new("#{dir}/local/file1", 'w')
-          File.new("#{dir}/local/file2", 'w')
+          File.new("#{dir}/local/file1", 'w').close
+          File.new("#{dir}/local/file2", 'w').close
           Local.new do
             upload!("#{dir}/local", "#{dir}/remote", recursive: true)
           end.run
@@ -37,18 +38,20 @@ module SSHKit
       def test_capture
         captured_command_result = ''
         Local.new do
-          captured_command_result = capture(:echo, 'foo', strip: false)
+          captured_command_result = capture("echo foo", strip: false)
         end.run
         assert_equal "foo\n", captured_command_result
       end
 
       def test_execute_raises_on_non_zero_exit_status_and_captures_stdout_and_stderr
+        command = "echo Test capturing stderr 1>&2 && exit 1"
         err = assert_raises SSHKit::Command::Failed do
           Local.new do
-            execute :echo, "'Test capturing stderr' 1>&2; false"
+            execute command
           end.run
         end
-        assert_equal "echo exit status: 256\necho stdout: Nothing written\necho stderr: Test capturing stderr\n", err.message
+        err.message.force_encoding(Encoding::ASCII_8BIT)
+        assert_equal "#{command} exit status: 256\n#{command} stdout: Nothing written\n#{command} stderr: Test capturing stderr\n", err.message
       end
 
       def test_test
@@ -62,6 +65,7 @@ module SSHKit
       end
 
       def test_interaction_handler
+        skip "highly dependent on Unix shell" if /mswin|mingw/ =~ RUBY_PLATFORM
         captured_command_result = nil
         Local.new do
           command = 'echo Enter Data; read the_data; echo Captured $the_data;'
